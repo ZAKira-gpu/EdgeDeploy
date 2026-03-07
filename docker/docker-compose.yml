@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile # Assuming a backend Dockerfile exists or will be added
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../storage:/app/storage
+
+  worker:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.worker
+    volumes:
+      - ../storage:/app/storage
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:alpine
