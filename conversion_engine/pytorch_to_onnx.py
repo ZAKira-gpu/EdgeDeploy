@@ -1,11 +1,18 @@
 import torch
 
-def export_pytorch_to_onnx(model_path, onnx_path, input_shape=(1, 3, 224, 224)):
-    """Exports a PyTorch model to ONNX format."""
-    print(f"Converting PyTorch model from {model_path} to {onnx_path}")
-    # Placeholder for actual conversion logic
-    pass
+def convert_pt_to_onnx(pt_path, onnx_path):
+    model = torch.load(pt_path, map_location="cpu")
+    model.eval()
 
-if __name__ == "__main__":
-    # Example usage
-    pass
+    dummy_input = torch.randn(1, 3, 640, 640)
+
+    torch.onnx.export(
+        model,
+        dummy_input,
+        onnx_path,
+        input_names=["input"],
+        output_names=["output"],
+        opset_version=12
+    )
+
+    return onnx_path
