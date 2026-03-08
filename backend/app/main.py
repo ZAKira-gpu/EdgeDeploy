@@ -1,24 +1,30 @@
-from fastapi import FastAPI, UploadFile, File, BackgroundTasks
-from pydantic import BaseModel
-import uuid
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
-app = FastAPI(title="AI Model Conversion API")
+from app.routes import upload, convert, status, download
 
-class ConversionTask(BaseModel):
-    task_id: str
-    status: str
-    model_type: str
+app = FastAPI(
+    title="EdgeDeploy – AI Model Conversion API",
+    description=(
+        "Upload a PyTorch `.pt` model and convert it to ONNX and TFLite "
+        "for edge deployment. All conversions run asynchronously."
+    ),
+    version="1.0.0",
+)
 
-@app.get("/")
-async def root():
-    return {"message": "Welcome to AI Model Conversion API"}
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-@app.post("/convert")
-async def create_conversion_task(background_tasks: BackgroundTasks, model_type: str, file: UploadFile = File(...)):
-    task_id = str(uuid.uuid4())
-    # Placeholder for actual background task logic
-    return {"task_id": task_id, "status": "accepted"}
+app.include_router(upload.router)
+app.include_router(convert.router)
+app.include_router(status.router)
+app.include_router(download.router)
 
-@app.get("/status/{task_id}")
-async def get_status(task_id: str):
-    return {"task_id": task_id, "status": "processing"}
+
+@app.get("/", tags=["Health"])
+async def health():
+    return {"status": "ok", "service": "EdgeDeploy Model Conversion API"}
