@@ -1,13 +1,23 @@
-import onnx
-# Note: Requires onnx-tf or similar library
-# from onnx_tf.backend import prepare
+import subprocess
 
 def convert_onnx_to_tflite(onnx_path, tflite_path):
-    """Converts an ONNX model to TFLite format."""
-    print(f"Converting ONNX model from {onnx_path} to {tflite_path}")
-    # Placeholder for actual conversion logic
-    pass
 
-if __name__ == "__main__":
-    # Example usage
-    pass
+    tf_model_dir = "temp_tf_model"
+
+    subprocess.run([
+        "python",
+        "-m",
+        "tf2onnx.convert",
+        "--input", onnx_path,
+        "--output", tf_model_dir
+    ])
+
+    import tensorflow as tf
+
+    converter = tf.lite.TFLiteConverter.from_saved_model(tf_model_dir)
+    tflite_model = converter.convert()
+
+    with open(tflite_path, "wb") as f:
+        f.write(tflite_model)
+
+    return tflite_path
