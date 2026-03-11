@@ -34,6 +34,7 @@ _executor = ThreadPoolExecutor(max_workers=4)
 def _run_conversion(task_id: str, pt_path: str):
     """Synchronous conversion wrapper executed inside a thread."""
     task_registry[task_id]["status"] = "processing"
+    print(f"\n[ENGINE] 🟡 Task {task_id}: Starting conversion for {pt_path}...")
     try:
         # Temporarily change cwd so relative paths inside convert_model work
         original_cwd = os.getcwd()
@@ -44,15 +45,20 @@ def _run_conversion(task_id: str, pt_path: str):
         dest_pt = os.path.join(work_dir, os.path.basename(pt_path))
         shutil.copy2(pt_path, dest_pt)
 
+        print(f"[ENGINE] 🔄 Task {task_id}: Running PyTorch -> ONNX -> TFLite...")
         os.chdir(work_dir)
         outputs = convert_model(dest_pt)
         os.chdir(original_cwd)
 
         task_registry[task_id]["status"]  = "completed"
         task_registry[task_id]["outputs"] = outputs
+        print(f"[ENGINE] ✅ Task {task_id}: Completed successfully!")
+        print(f"         Outputs: {outputs}\n")
     except Exception as exc:
         task_registry[task_id]["status"] = "failed"
         task_registry[task_id]["error"]  = str(exc)
+        print(f"[ENGINE] ❌ Task {task_id}: FAILED!")
+        print(f"         Error: {exc}\n")
 
 
 async def start_conversion(file_id: str, pt_path: str) -> str:

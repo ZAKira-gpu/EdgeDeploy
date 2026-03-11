@@ -1,5 +1,5 @@
 import uuid
-import shutil
+import aiofiles
 from pathlib import Path
 from fastapi import APIRouter, UploadFile, File, HTTPException
 
@@ -7,6 +7,8 @@ from app.models.schemas import UploadResponse
 
 UPLOAD_DIR = Path(__file__).resolve().parents[3] / "storage" / "uploads"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+CHUNK_SIZE = 1024 * 1024  # 1 MB chunks
 
 router = APIRouter(prefix="/upload", tags=["Upload"])
 
@@ -23,11 +25,13 @@ async def upload_model(file: UploadFile = File(...)):
     file_id = str(uuid.uuid4())
     dest = UPLOAD_DIR / f"{file_id}_{file.filename}"
 
-    with open(dest, "wb") as f:
-        shutil.copyfileobj(file.file, f)
+    # Write in async chunks so large models don't block the event loop
+    async with aiofiles.open(dest, "wb") as out:
+        while chunk := await file.read(CHUNK_SIZE):
+            await out.write(chunk)
 
     return UploadResponse(
-        file_id=str(dest),          # use path as stable reference
+        file_id=str(dest),
         filename=file.filename,
         message="File uploaded successfully. Use /convert to start conversion."
     )

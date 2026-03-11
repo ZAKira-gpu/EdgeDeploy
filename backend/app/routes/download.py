@@ -1,4 +1,3 @@
-import os
 import zipfile
 from pathlib import Path
 from fastapi import APIRouter, HTTPException, Query
@@ -7,12 +6,6 @@ from fastapi.responses import FileResponse
 from app.services.conversion_service import get_task, get_output_dir
 
 router = APIRouter(prefix="/download", tags=["Download"])
-
-_FORMAT_MAP = {
-    "onnx":   "model.onnx",
-    "tflite": "model.tflite",
-    "all":    None,          # triggers zip creation
-}
 
 
 @router.get("/{task_id}", summary="Download converted model file(s)")
@@ -37,32 +30,34 @@ async def download(
             detail=f"Task is '{task['status']}', not yet completed."
         )
 
-    out_dir = get_output_dir(task_id)
+    outputs = task.get("outputs", {})
+    onnx_path   = Path(outputs.get("onnx",   ""))
+    tflite_path = Path(outputs.get("tflite", ""))
 
     if format == "all":
+        out_dir  = get_output_dir(task_id)
         zip_path = out_dir / "converted_models.zip"
         with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
-            for fname in ["model.onnx", "model.tflite"]:
-                fpath = out_dir / fname
-                if fpath.exists():
-                    zf.write(fpath, fname)
+            if onnx_path.exists():
+                zf.write(onnx_path, onnx_path.name)
+            if tflite_path.exists():
+                zf.write(tflite_path, tflite_path.name)
+        if zip_path.stat().st_size == 0:
+            raise HTTPException(status_code=500, detail="Zip is empty — output files not found.")
         return FileResponse(
             path=str(zip_path),
             media_type="application/zip",
             filename="converted_models.zip",
         )
 
-    filename = _FORMAT_MAP[format]
-    file_path = out_dir / filename
-    if not file_path.exists():
-        raise HTTPException(status_code=404, detail=f"{filename} not found for this task.")
+    if format == "onnx":
+        if not onnx_path.exists():
+            raise HTTPException(status_code=404, detail="ONNX file not found for this task.")
+        return FileResponse(path=str(onnx_path), media_type="application/octet-stream",
+                            filename=onnx_path.name)
 
-    media_types = {
-        "onnx":   "application/octet-stream",
-        "tflite": "application/octet-stream",
-    }
-    return FileResponse(
-        path=str(file_path),
-        media_type=media_types[format],
-        filename=filename,
-    )
+    if format == "tflite":
+        if not tflite_path.exists():
+            raise HTTPException(status_code=404, detail="TFLite file not found for this task.")
+        return FileResponse(path=str(tflite_path), media_type="application/octet-stream",
+                            filename=tflite_path.name)
