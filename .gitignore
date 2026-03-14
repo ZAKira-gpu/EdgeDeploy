@@ -4,7 +4,6 @@ __pycache__/
 *$py.class
 *.so
 .Python
-env/
 build/
 develop-eggs/
 dist/
@@ -24,6 +23,7 @@ wheels/
 # Virtual Environment
 venv/
 ENV/
+env/
 
 # IDEs
 .vscode/
@@ -33,6 +33,21 @@ ENV/
 .DS_Store
 Thumbs.db
 
-# Project Specific
-storage/*
-!storage/.gitkeep
+# Project Specific - model storage (too large for git)
+storage/uploads/*
+storage/outputs/*
+!storage/uploads/.gitkeep
+!storage/outputs/.gitkeep
+
+# Intermediate conversion artifacts
+temp_tf_model/
+*.zip
+
+# Model files (large binary files)
+*.pt
+*.onnx
+*.tflite
+
+# Logs
+*.log
+conversion.log

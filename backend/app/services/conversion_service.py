@@ -31,7 +31,7 @@ _executor = ThreadPoolExecutor(max_workers=4)
 
 
 # ─── Helpers ──────────────────────────────────────────────────────────────
-def _run_conversion(task_id: str, pt_path: str):
+def _run_conversion(task_id: str, pt_path: str, precision: str = "fp32"):
     """Synchronous conversion wrapper executed inside a thread."""
     task_registry[task_id]["status"] = "processing"
     print(f"\n[ENGINE] 🟡 Task {task_id}: Starting conversion for {pt_path}...")
@@ -46,9 +46,8 @@ def _run_conversion(task_id: str, pt_path: str):
         shutil.copy2(pt_path, dest_pt)
 
         print(f"[ENGINE] 🔄 Task {task_id}: Running PyTorch -> ONNX -> TFLite...")
-        os.chdir(work_dir)
-        outputs = convert_model(dest_pt)
-        os.chdir(original_cwd)
+        # NOT changing directory since it isn't thread-safe! Pass the work_dir to convert_model
+        outputs = convert_model(dest_pt, work_dir, precision=precision)
 
         task_registry[task_id]["status"]  = "completed"
         task_registry[task_id]["outputs"] = outputs
@@ -61,7 +60,7 @@ def _run_conversion(task_id: str, pt_path: str):
         print(f"         Error: {exc}\n")
 
 
-async def start_conversion(file_id: str, pt_path: str) -> str:
+async def start_conversion(file_id: str, pt_path: str, precision: str = "fp32") -> str:
     """Enqueue a conversion task and return its task_id."""
     task_id = str(uuid.uuid4())
     task_registry[task_id] = {
@@ -71,7 +70,7 @@ async def start_conversion(file_id: str, pt_path: str) -> str:
         "error":   None,
     }
     loop = asyncio.get_running_loop()
-    loop.run_in_executor(_executor, _run_conversion, task_id, pt_path)
+    loop.run_in_executor(_executor, _run_conversion, task_id, pt_path, precision)
     return task_id
 
 

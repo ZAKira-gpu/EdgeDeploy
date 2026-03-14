@@ -53,11 +53,19 @@ async def download(
     if format == "onnx":
         if not onnx_path.exists():
             raise HTTPException(status_code=404, detail="ONNX file not found for this task.")
-        return FileResponse(path=str(onnx_path), media_type="application/octet-stream",
-                            filename=onnx_path.name)
+        return FileResponse(
+            path=str(onnx_path),
+            media_type="application/octet-stream",
+            filename=onnx_path.name,
+            headers={"Access-Control-Expose-Headers": "Content-Disposition"}
+        )
 
     if format == "tflite":
         if not tflite_path.exists():
             raise HTTPException(status_code=404, detail="TFLite file not found for this task.")
-        return FileResponse(path=str(tflite_path), media_type="application/octet-stream",
-                            filename=tflite_path.name)
+        return FileResponse(
+            path=str(tflite_path),
+            media_type="application/octet-stream",
+            filename=tflite_path.name,
+            headers={"Access-Control-Expose-Headers": "Content-Disposition"}
+        )

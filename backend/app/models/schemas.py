@@ -8,6 +8,7 @@ class UploadResponse(BaseModel):
 
 class ConvertRequest(BaseModel):
     file_id: str
+    precision: str = "fp32"  # "fp32", "fp16", or "int8"
 
 class ConvertResponse(BaseModel):
     task_id: str
