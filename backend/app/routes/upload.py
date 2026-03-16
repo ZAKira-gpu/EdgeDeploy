@@ -1,7 +1,7 @@
 import uuid
 import aiofiles
 from pathlib import Path
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
 
 from app.models.schemas import UploadResponse
 from app.dependencies import get_current_user
