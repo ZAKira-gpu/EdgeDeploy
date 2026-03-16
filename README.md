@@ -1,5 +1,4 @@
 ---
-<<<<<<< HEAD
 title: EdgeDeploy AI Model Conversion API
 emoji: 🚀
 colorFrom: blue
@@ -133,16 +132,3 @@ curl "http://localhost:8000/download/<task_id>?format=all" -O models.zip
 ## License
 
 MIT — see [LICENSE](LICENSE)
-=======
-title: Edge Deploy
-emoji: 📉
-colorFrom: yellow
-colorTo: red
-sdk: docker
-pinned: false
-license: mit
-short_description: small app automation for conversion(onnx,tflite,quantization
----
-
-Check out the configuration reference at https://huggingface.co/docs/hub/spaces-config-reference
->>>>>>> 7a1a58fc2eb5d97896212bcb5dbf1d6996803ddb
