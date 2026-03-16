@@ -1,0 +1,46 @@
+# ─── Stage: Runtime ────────────────────────────────────────────────────────────
+# Use the official TF image — it already has TensorFlow pre-installed (~4GB saved)
+FROM tensorflow/tensorflow:2.18.0
+
+WORKDIR /app
+
+# ── System dependencies ────────────────────────────────────────────────────────
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        git \
+        libgl1 \
+        libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
+# ── Python dependencies (heavy ML layer — cached unless requirements change) ──
+COPY backend/requirements.txt /tmp/requirements.txt
+RUN pip install --no-cache-dir -r /tmp/requirements.txt
+
+# Install ML conversion dependencies separately so they are cached independently
+RUN pip install --no-cache-dir \
+        ultralytics==8.4.21 \
+        onnx2tf \
+        tf-keras \
+        ai-edge-litert \
+        sng4onnx \
+        onnxsim \
+        onnx_graphsurgeon \
+        onnx>=1.14.0
+
+# ── Application code ──────────────────────────────────────────────────────────
+COPY backend/         /app/backend/
+COPY conversion_engine/ /app/conversion_engine/
+
+# ── Storage directories ────────────────────────────────────────────────────────
+RUN mkdir -p /app/storage/uploads /app/storage/outputs
+
+# ── Environment ─────────────────────────────────────────────────────────────
+ENV PYTHONPATH=/app \
+    PYTHONUNBUFFERED=1 \
+    ONNX2TF_NO_VERSION_CHECK=1 \
+    TF_ENABLE_ONEDNN_OPTS=0
+
+WORKDIR /app/backend
+
+EXPOSE 8000
+
+CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

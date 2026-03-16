@@ -1,0 +1,46 @@
+# Git
+.git
+.gitignore
+
+# Virtual environment
+venv/
+ENV/
+env/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Storage — mounted as a volume at runtime, not baked into image
+storage/
+
+# Test files
+test_*.py
+*.log
+test_out.txt
+
+# Large model/artifact files
+*.pt
+*.onnx
+*.tflite
+*.zip
+
+# Intermediate conversion artifacts
+temp_tf_model/
+
+# Docker files themselves (no need to copy into image)
+docker/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Docs
+README.md
+LICENSE
