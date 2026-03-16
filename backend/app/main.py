@@ -2,7 +2,12 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
-from app.routes import upload, convert, status, download, auth
+from app.routes.auth import router as auth_router
+from app.routes.upload import router as upload_router
+from app.routes.convert import router as convert_router
+from app.routes.status import router as status_router
+from app.routes.download import router as download_router
+
 from app.database import engine, Base
 from app.config.settings import settings
 
@@ -29,12 +34,11 @@ app.add_middleware(
     expose_headers=["*"],
 )
 
-app.include_router(auth.router)
-app.include_router(upload.router)
-app.include_router(convert.router)
-app.include_router(status.router)
-app.include_router(download.router)
-
+app.include_router(auth_router)
+app.include_router(upload_router)
+app.include_router(convert_router)
+app.include_router(status_router)
+app.include_router(download_router)
 
 @app.get("/", tags=["Health"])
 async def health():

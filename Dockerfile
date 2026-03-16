@@ -25,7 +25,7 @@ WORKDIR /app
 # Copy requirements first to leverage Docker cache
 COPY --chown=user backend/requirements.txt /tmp/requirements.txt
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
-    pip install --no-cache-dir cffi cryptography && \
+    pip install --no-cache-dir cffi cryptography itsdangerous && \
     pip install --no-cache-dir -r /tmp/requirements.txt
 
 # ML conversion stack (TF already installed in base image)
