@@ -4,6 +4,8 @@ from pathlib import Path
 from fastapi import APIRouter, UploadFile, File, HTTPException
 
 from app.models.schemas import UploadResponse
+from app.dependencies import get_current_user
+from app.models.database_models import User as DBUser
 
 UPLOAD_DIR = Path(__file__).resolve().parents[3] / "storage" / "uploads"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
@@ -14,7 +16,10 @@ router = APIRouter(prefix="/upload", tags=["Upload"])
 
 
 @router.post("", response_model=UploadResponse, summary="Upload a .pt model file")
-async def upload_model(file: UploadFile = File(...)):
+async def upload_model(
+    file: UploadFile = File(...),
+    current_user: DBUser = Depends(get_current_user)
+):
     """
     Upload a PyTorch `.pt` model file.
     Returns a `file_id` to reference this upload in the /convert endpoint.

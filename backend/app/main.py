@@ -1,7 +1,13 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 
-from app.routes import upload, convert, status, download
+from app.routes import upload, convert, status, download, auth
+from app.database import engine, Base
+from app.config.settings import settings
+
+# Create database tables
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="EdgeDeploy – AI Model Conversion API",
@@ -12,6 +18,9 @@ app = FastAPI(
     version="1.0.0",
 )
 
+# Mandatory for OAuth state management
+app.add_middleware(SessionMiddleware, secret_key=settings.SECRET_KEY)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -20,6 +29,7 @@ app.add_middleware(
     expose_headers=["*"],
 )
 
+app.include_router(auth.router)
 app.include_router(upload.router)
 app.include_router(convert.router)
 app.include_router(status.router)

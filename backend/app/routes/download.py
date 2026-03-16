@@ -1,9 +1,10 @@
 import zipfile
 from pathlib import Path
-from fastapi import APIRouter, HTTPException, Query
-from fastapi.responses import FileResponse
-
 from app.services.conversion_service import get_task, get_output_dir
+from app.dependencies import get_current_user
+from app.models.database_models import User as DBUser
+from fastapi import APIRouter, HTTPException, Query, Depends
+from fastapi.responses import FileResponse
 
 router = APIRouter(prefix="/download", tags=["Download"])
 
@@ -13,17 +14,19 @@ async def download(
     task_id: str,
     format: str = Query("all", enum=["onnx", "tflite", "all"],
                         description="Which output format to download."),
+    current_user: DBUser = Depends(get_current_user)
 ):
     """
     Download one or both converted model files once the task is **completed**.
-
-    - `format=onnx`   — download the ONNX file
-    - `format=tflite` — download the TFLite file
-    - `format=all`    — download a zip containing both (default)
     """
     task = get_task(task_id)
     if task is None:
-        raise HTTPException(status_code=404, detail=f"Task '{task_id}' not found.")
+        raise HTTPException(status_code=404, detail="Task not found")
+        
+    # Ownership check
+    if task["user_id"] != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to access this task")
+        
     if task["status"] != "completed":
         raise HTTPException(
             status_code=400,

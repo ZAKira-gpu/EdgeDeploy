@@ -28,6 +28,9 @@ if str(CONV_DIR) not in sys.path:
 
 from convert import convert_model  # noqa: E402 (added after path setup)
 
+from app.database import SessionLocal
+from app.models.database_models import Task as DBTask
+
 # ─── Storage dirs ──────────────────────────────────────────────────────────
 # In Docker, REPO_ROOT is /app — storage lives at /app/storage (volume-mounted)
 STORAGE_ROOT = REPO_ROOT / "storage"
@@ -36,20 +39,23 @@ OUTPUT_DIR   = STORAGE_ROOT / "outputs"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-# ─── In-memory task registry (replace with Redis for production) ───────────
-task_registry: dict[str, dict] = {}
-
 _executor = ThreadPoolExecutor(max_workers=4)
 
 
 # ─── Helpers ──────────────────────────────────────────────────────────────
 def _run_conversion(task_id: str, pt_path: str, precision: str = "fp32"):
     """Synchronous conversion wrapper executed inside a thread."""
-    task_registry[task_id]["status"] = "processing"
-    print(f"\n[ENGINE] 🟡 Task {task_id}: Starting conversion for {pt_path}...")
+    db = SessionLocal()
     try:
-        # Temporarily change cwd so relative paths inside convert_model work
-        original_cwd = os.getcwd()
+        task = db.query(DBTask).filter(DBTask.id == task_id).first()
+        if not task:
+            return
+
+        task.status = "processing"
+        db.commit()
+
+        print(f"\n[ENGINE] 🟡 Task {task_id}: Starting conversion for {pt_path}...")
+        
         work_dir = str(OUTPUT_DIR / task_id)
         os.makedirs(work_dir, exist_ok=True)
 
@@ -58,36 +64,62 @@ def _run_conversion(task_id: str, pt_path: str, precision: str = "fp32"):
         shutil.copy2(pt_path, dest_pt)
 
         print(f"[ENGINE] 🔄 Task {task_id}: Running PyTorch -> ONNX -> TFLite...")
-        # NOT changing directory since it isn't thread-safe! Pass the work_dir to convert_model
         outputs = convert_model(dest_pt, work_dir, precision=precision)
 
-        task_registry[task_id]["status"]  = "completed"
-        task_registry[task_id]["outputs"] = outputs
+        task.status = "completed"
+        task.outputs = outputs
+        db.commit()
         print(f"[ENGINE] ✅ Task {task_id}: Completed successfully!")
-        print(f"         Outputs: {outputs}\n")
     except Exception as exc:
-        task_registry[task_id]["status"] = "failed"
-        task_registry[task_id]["error"]  = str(exc)
+        task.status = "failed"
+        task.error = str(exc)
+        db.commit()
         print(f"[ENGINE] ❌ Task {task_id}: FAILED!")
         print(f"         Error: {exc}\n")
+    finally:
+        db.close()
 
 
-async def start_conversion(file_id: str, pt_path: str, precision: str = "fp32") -> str:
-    """Enqueue a conversion task and return its task_id."""
+async def start_conversion(file_id: str, pt_path: str, user_id: str, precision: str = "fp32") -> str:
+    """Enqueue a conversion task, save to DB, and return its task_id."""
     task_id = str(uuid.uuid4())
-    task_registry[task_id] = {
-        "status":  "pending",
-        "file_id": file_id,
-        "outputs": None,
-        "error":   None,
-    }
+    
+    db = SessionLocal()
+    try:
+        new_task = DBTask(
+            id=task_id,
+            user_id=user_id,
+            file_id=file_id,
+            precision=precision,
+            status="pending"
+        )
+        db.add(new_task)
+        db.commit()
+    finally:
+        db.close()
+
     loop = asyncio.get_running_loop()
     loop.run_in_executor(_executor, _run_conversion, task_id, pt_path, precision)
     return task_id
 
 
-def get_task(task_id: str) -> dict | None:
-    return task_registry.get(task_id)
+def get_task(task_id: str) -> DBTask | None:
+    db = SessionLocal()
+    try:
+        # Use eager loading or just detach if needed, but here we just return the object
+        # and hope the caller doesn't need a session. Actually, better return a dict or copy.
+        task = db.query(DBTask).filter(DBTask.id == task_id).first()
+        if not task: return None
+        return {
+            "task_id": task.id,
+            "status": task.status,
+            "error": task.error,
+            "outputs": task.outputs,
+            "user_id": task.user_id
+        }
+    finally:
+        db.close()
+
 
 
 def get_output_dir(task_id: str) -> Path:
