@@ -15,7 +15,6 @@ async def login_github(request: Request):
     else:
         redirect_uri = request.url_for('auth_github_callback')
     
-    print(f"[DEBUG] Generated redirect_uri: {redirect_uri}")
     return await oauth.github.authorize_redirect(request, str(redirect_uri))
 
 @router.get("/github/callback", name="auth_github_callback")
