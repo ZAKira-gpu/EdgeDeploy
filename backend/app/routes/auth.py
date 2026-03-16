@@ -9,12 +9,16 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 
 @router.get("/login/github")
 async def login_github(request: Request):
-    # The redirect URI must match what you registered in GitHub
-    # We use request.url_for to get the full absolute URL
+    # Generating absolute URL for callback
     redirect_uri = request.url_for('auth_github_callback')
+    
+    # Fix for Hugging Face proxy: force HTTPS
+    if "https" not in str(redirect_uri) and ".hf.space" in str(redirect_uri):
+        redirect_uri = str(redirect_uri).replace("http://", "https://")
+    
     return await oauth.github.authorize_redirect(request, str(redirect_uri))
 
-@router.get("/callback/github", name="auth_github_callback")
+@router.get("/github/callback", name="auth_github_callback")
 async def auth_github_callback(request: Request, db: Session = Depends(get_db)):
     try:
         token = await oauth.github.authorize_access_token(request)
