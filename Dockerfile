@@ -14,13 +14,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libglib2.0-0 \
         cmake \
         g++ \
+        python3-dev \
+        libffi-dev \
+        libssl-dev \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# ── Python dependencies (installed as root, before switching user) ─────────────
+# ─── Python dependencies ──────────────────────────────────────────────────────
+# Copy requirements first to leverage Docker cache
 COPY --chown=user backend/requirements.txt /tmp/requirements.txt
-RUN pip install --no-cache-dir -r /tmp/requirements.txt
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
+    pip install --no-cache-dir cffi cryptography && \
+    pip install --no-cache-dir -r /tmp/requirements.txt
 
 # ML conversion stack (TF already installed in base image)
 RUN pip install --no-cache-dir \
