@@ -17,6 +17,15 @@ async def login_github(request: Request):
     
     return await oauth.github.authorize_redirect(request, str(redirect_uri))
 
+@router.get("/login/google")
+async def login_google(request: Request):
+    if ".hf.space" in str(request.base_url):
+        redirect_uri = f"https://{request.headers.get('host')}/auth/google/callback"
+    else:
+        redirect_uri = request.url_for('auth_google_callback')
+    
+    return await oauth.google.authorize_redirect(request, str(redirect_uri))
+
 @router.get("/github/callback", name="auth_github_callback")
 async def auth_github_callback(request: Request, db: Session = Depends(get_db)):
     try:
@@ -39,6 +48,37 @@ async def auth_github_callback(request: Request, db: Session = Depends(get_db)):
                 name=user_info.get("name") or user_info.get("login"),
                 provider="github",
                 provider_id=str(user_info.get("id"))
+            )
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+
+        jwt_token = create_access_token(data={"sub": user.id})
+        return {"access_token": jwt_token, "token_type": "bearer", "api_key": user.api_key}
+        
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Authentication failed: {str(e)}")
+
+@router.get("/google/callback", name="auth_google_callback")
+async def auth_google_callback(request: Request, db: Session = Depends(get_db)):
+    try:
+        token = await oauth.google.authorize_access_token(request)
+        user_info = token.get('userinfo')
+        if not user_info:
+            # Fallback if userinfo not in token
+            user_info = await oauth.google.parse_id_token(request, token)
+            
+        email = user_info.get("email")
+        if not email:
+            raise HTTPException(status_code=400, detail="Google did not provide an email.")
+
+        user = db.query(User).filter(User.email == email).first()
+        if not user:
+            user = User(
+                email=email,
+                name=user_info.get("name"),
+                provider="google",
+                provider_id=str(user_info.get("sub"))
             )
             db.add(user)
             db.commit()
