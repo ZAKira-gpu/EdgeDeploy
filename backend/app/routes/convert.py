@@ -24,7 +24,7 @@ async def convert_model(
     if task_count >= CONVERSION_LIMIT:
         raise HTTPException(
             status_code=403, 
-            detail=f"Conversion limit reached ({CONVERSION_LIMIT} per account). Please contact support for more quota."
+            detail=f"Conversion limit reached ({CONVERSION_LIMIT} per 24h). Please try again later or contact support."
         )
 
     # 2. Check file existence

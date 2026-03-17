@@ -121,11 +121,17 @@ def get_task(task_id: str) -> dict | None:
         db.close()
 
 
+from datetime import datetime, timedelta
+
 def count_user_tasks(user_id: str) -> int:
-    """Returns the total number of tasks created by a user."""
+    """Returns the number of tasks created by a user in the last 24 hours."""
     db = SessionLocal()
     try:
-        return db.query(DBTask).filter(DBTask.user_id == user_id).count()
+        since = datetime.utcnow() - timedelta(days=1)
+        return db.query(DBTask).filter(
+            DBTask.user_id == user_id,
+            DBTask.created_at >= since
+        ).count()
     finally:
         db.close()
 
