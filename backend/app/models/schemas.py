@@ -1,5 +1,6 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
+from datetime import datetime
 
 class UploadResponse(BaseModel):
     file_id: str
@@ -18,8 +19,15 @@ class ConvertResponse(BaseModel):
 class StatusResponse(BaseModel):
     task_id: str
     status: str         # "pending" | "processing" | "completed" | "failed"
+    precision: Optional[str] = "fp32"
     error: Optional[str] = None
     outputs: Optional[dict] = None
+    created_at: Optional[datetime] = None
+
+class TaskListResponse(BaseModel):
+    tasks: List[StatusResponse]
+    count: int
+    limit: int = 3
 
 class ErrorResponse(BaseModel):
     detail: str

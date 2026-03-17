@@ -103,11 +103,9 @@ async def start_conversion(file_id: str, pt_path: str, user_id: str, precision: 
     return task_id
 
 
-def get_task(task_id: str) -> DBTask | None:
+def get_task(task_id: str) -> dict | None:
     db = SessionLocal()
     try:
-        # Use eager loading or just detach if needed, but here we just return the object
-        # and hope the caller doesn't need a session. Actually, better return a dict or copy.
         task = db.query(DBTask).filter(DBTask.id == task_id).first()
         if not task: return None
         return {
@@ -115,11 +113,41 @@ def get_task(task_id: str) -> DBTask | None:
             "status": task.status,
             "error": task.error,
             "outputs": task.outputs,
-            "user_id": task.user_id
+            "user_id": task.user_id,
+            "precision": task.precision,
+            "created_at": task.created_at
         }
     finally:
         db.close()
 
+
+def count_user_tasks(user_id: str) -> int:
+    """Returns the total number of tasks created by a user."""
+    db = SessionLocal()
+    try:
+        return db.query(DBTask).filter(DBTask.user_id == user_id).count()
+    finally:
+        db.close()
+
+
+def get_user_history(user_id: str) -> list:
+    """Returns a list of all tasks for a specific user."""
+    db = SessionLocal()
+    try:
+        tasks = db.query(DBTask).filter(DBTask.user_id == user_id).order_by(DBTask.created_at.desc()).all()
+        return [
+            {
+                "task_id": t.id,
+                "status": t.status,
+                "error": t.error,
+                "outputs": t.outputs,
+                "precision": t.precision,
+                "created_at": t.created_at
+            }
+            for t in tasks
+        ]
+    finally:
+        db.close()
 
 
 def get_output_dir(task_id: str) -> Path:
