@@ -1,6 +1,12 @@
-# EdgeDeploy — HF Spaces Dockerfile
-# Follows HF Docker Space requirements: non-root user + port 7860
+# Frontend Build Stage
+FROM node:20-alpine AS build-frontend
+WORKDIR /app
+COPY frontend/package*.json ./
+RUN npm install
+COPY frontend/ .
+RUN npm run build
 
+# Final Stage (TensorFlow)
 FROM tensorflow/tensorflow:2.18.0
 
 # ── Non-root user required by HF Spaces ──────────────────────────────────────
@@ -39,14 +45,15 @@ RUN pip install --no-cache-dir \
         onnx_graphsurgeon \
         "onnx>=1.14.0"
 
-# ── Copy application code ──────────────────────────────────────────────────────
+# ── Copy application code and built frontend ──────────────────────────────────
 COPY --chown=user backend/           /app/backend/
 COPY --chown=user conversion_engine/ /app/conversion_engine/
+COPY --from=build-frontend --chown=user /app/dist /app/frontend/dist
 
 # ── Storage dirs (ephemeral on free tier) ─────────────────────────────────────
 RUN mkdir -p /app/storage/uploads /app/storage/outputs \
     && chown -R user:user /app/storage
-
+    
 # ── Switch to non-root user ───────────────────────────────────────────────────
 USER user
 
@@ -61,3 +68,4 @@ WORKDIR /app/backend
 EXPOSE 7860
 
 CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "7860"]
+

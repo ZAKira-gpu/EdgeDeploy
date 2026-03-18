@@ -35,6 +35,10 @@ app.add_middleware(
     expose_headers=["*"],
 )
 
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+import os
+
 app.include_router(auth_router)
 app.include_router(upload_router)
 app.include_router(convert_router)
@@ -42,6 +46,24 @@ app.include_router(status_router)
 app.include_router(download_router)
 app.include_router(tasks_router)
 
-@app.get("/", tags=["Health"])
-async def health():
-    return {"status": "ok", "service": "EdgeDeploy Model Conversion API"}
+# ── Serve Frontend ───────────────────────────────────────────────────────────
+frontend_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../frontend/dist"))
+
+if os.path.exists(frontend_path):
+    # Mount assets (JS/CSS)
+    assets_path = os.path.join(frontend_path, "assets")
+    if os.path.exists(assets_path):
+        app.mount("/assets", StaticFiles(directory=assets_path), name="static")
+
+    # Catch-all for React Router
+    @app.get("/{full_path:path}", tags=["Frontend"])
+    async def serve_frontend(full_path: str):
+        # Exclude internal API docs
+        if full_path in ["docs", "redoc", "openapi.json"]:
+            return None # Let FastAPI handle these
+        return FileResponse(os.path.join(frontend_path, "index.html"))
+else:
+    @app.get("/", tags=["Health"])
+    async def health():
+        return {"status": "ok", "service": "EdgeDeploy API (Frontend not built)"}
+
