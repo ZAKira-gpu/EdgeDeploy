@@ -49,20 +49,60 @@ export default function Dashboard({ onStartConversion }: DashboardProps) {
     }
   };
 
-  const handleConvert = () => {
+  const handleConvert = async () => {
     if (!selectedFile) return;
 
-    const conversionData = {
-      fileName: selectedFile.name,
-      fileSize: selectedFile.size,
-      inputFormat,
-      outputFormat,
-      quantization,
-    };
+    const apiKey = localStorage.getItem('api_key');
+    if (!apiKey) {
+      navigate('/auth');
+      return;
+    }
 
-    onStartConversion(conversionData);
-    navigate('/converting');
+    try {
+      // 1. Upload the file
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+
+      const uploadRes = await fetch('/upload', {
+        method: 'POST',
+        headers: {
+          'X-API-Key': apiKey,
+        },
+        body: formData,
+      });
+
+      if (!uploadRes.ok) throw new Error('Upload failed');
+      const { file_id } = await uploadRes.json();
+
+      // 2. Trigger conversion
+      const convertRes = await fetch('/convert', {
+        method: 'POST',
+        headers: {
+          'X-API-Key': apiKey,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          file_id: file_id,
+          precision: quantization === 'none' ? 'fp32' : quantization,
+        }),
+      });
+
+      if (!convertRes.ok) throw new Error('Conversion trigger failed');
+      const data = await convertRes.json();
+
+      onStartConversion({
+        task_id: data.task_id,
+        fileName: selectedFile.name,
+        fileSize: selectedFile.size,
+        precision: quantization === 'none' ? 'fp32' : quantization,
+      });
+      navigate('/converting');
+    } catch (err) {
+      console.error(err);
+      alert('Error during conversion: ' + (err instanceof Error ? err.message : String(err)));
+    }
   };
+
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white flex">
