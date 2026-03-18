@@ -19,43 +19,52 @@ export default function ConversionProgress({ data }: ConversionProgressProps) {
   ];
 
   useEffect(() => {
-    // Simulate conversion process
-    const logMessages = [
-      '> Starting conversion process...',
-      `> Uploading ${data?.fileName || 'model.pt'}...`,
-      '> Upload complete (2.3s)',
-      '',
-      '> Analyzing model structure...',
-      '> Converting PyTorch → ONNX...',
-      '> ONNX conversion successful',
-      '',
-      '> Converting ONNX → TensorFlow Lite...',
-      '> Applying quantization...',
-      '> Optimizing model...',
-      '',
-      '> Conversion complete!',
-      '> Model size: 24.5 MB → 6.2 MB (74.7% reduction)',
-      '> Time elapsed: 12.3s',
-    ];
+    if (!data?.task_id) return;
 
-    let index = 0;
-    const interval = setInterval(() => {
-      if (index < logMessages.length) {
-        setLogs((prev) => [...prev, logMessages[index]]);
-        index++;
+    const apiKey = localStorage.getItem('api_key');
+    if (!apiKey) {
+      navigate('/auth');
+      return;
+    }
 
-        // Update steps
-        if (index === 3) setCurrentStep(1);
-        if (index === 8) setCurrentStep(2);
-        if (index === 11) setCurrentStep(3);
-      } else {
-        clearInterval(interval);
-        setTimeout(() => navigate('/results'), 1000);
+    let intervalId: any;
+
+    const checkStatus = async () => {
+      try {
+        const res = await fetch(`/status/${data.task_id}`, {
+          headers: { 'X-API-Key': apiKey }
+        });
+        if (!res.ok) throw new Error('Failed to fetch status');
+        const statusData = await res.json();
+
+        setLogs((prev) => {
+            const lastLog = prev[prev.length - 1];
+            const newLog = `> Status: ${statusData.status}`;
+            if (lastLog === newLog) return prev;
+            return [...prev, newLog];
+        });
+
+        if (statusData.status === 'processing') {
+          setCurrentStep(1);
+        } else if (statusData.status === 'completed') {
+          setCurrentStep(3);
+          clearInterval(intervalId);
+          setTimeout(() => navigate('/results'), 1500);
+        } else if (statusData.status === 'failed') {
+          alert('Conversion failed!');
+          navigate('/dashboard');
+        }
+      } catch (err) {
+        console.error(err);
       }
-    }, 500);
+    };
 
-    return () => clearInterval(interval);
+    intervalId = setInterval(checkStatus, 2000);
+    checkStatus(); // Check immediately
+
+    return () => clearInterval(intervalId);
   }, [navigate, data]);
+
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white">
