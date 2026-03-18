@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useEffect, useState } from 'react';
+import { useNavigate, useLocation } from 'react-router';
 import { Github, Mail, Zap } from 'lucide-react';
 
 interface AuthPageProps {
@@ -8,12 +8,33 @@ interface AuthPageProps {
 
 export default function AuthPage({ onAuthenticate }: AuthPageProps) {
   const navigate = useNavigate();
+  const location = useLocation();
   const [email, setEmail] = useState('');
 
+  useEffect(() => {
+    // Check for tokens in the URL (returned from backend redirect)
+    const params = new URLSearchParams(location.search);
+    const token = params.get('token');
+    const apiKey = params.get('api_key');
+
+    if (token && apiKey) {
+      localStorage.setItem('auth_token', token);
+      localStorage.setItem('api_key', apiKey);
+      onAuthenticate();
+      navigate('/dashboard');
+    }
+  }, [location, navigate, onAuthenticate]);
+
   const handleAuth = (provider: string) => {
-    // Simulate authentication
-    onAuthenticate();
-    navigate('/dashboard');
+    if (provider === 'github') {
+      window.location.href = '/auth/login/github';
+    } else if (provider === 'google') {
+      window.location.href = '/auth/login/google';
+    } else {
+      // Email simulation for now
+      onAuthenticate();
+      navigate('/dashboard');
+    }
   };
 
   return (

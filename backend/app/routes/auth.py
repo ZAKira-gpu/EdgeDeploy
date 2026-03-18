@@ -54,7 +54,15 @@ async def auth_github_callback(request: Request, db: Session = Depends(get_db)):
             db.refresh(user)
 
         jwt_token = create_access_token(data={"sub": user.id})
-        return {"access_token": jwt_token, "token_type": "bearer", "api_key": user.api_key}
+        
+        # Friendly redirect for browser-based UI
+        # We pass the token and api_key in the hash fragment so it's not logged in server logs
+        redirect_url = f"/auth?token={jwt_token}&api_key={user.api_key}"
+        if ".hf.space" in str(request.base_url):
+             redirect_url = f"https://{request.headers.get('host')}{redirect_url}"
+        
+        from fastapi.responses import RedirectResponse
+        return RedirectResponse(url=redirect_url)
         
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Authentication failed: {str(e)}")
@@ -85,10 +93,18 @@ async def auth_google_callback(request: Request, db: Session = Depends(get_db)):
             db.refresh(user)
 
         jwt_token = create_access_token(data={"sub": user.id})
-        return {"access_token": jwt_token, "token_type": "bearer", "api_key": user.api_key}
+
+        # Friendly redirect for browser-based UI
+        redirect_url = f"/auth?token={jwt_token}&api_key={user.api_key}"
+        if ".hf.space" in str(request.base_url):
+             redirect_url = f"https://{request.headers.get('host')}{redirect_url}"
+        
+        from fastapi.responses import RedirectResponse
+        return RedirectResponse(url=redirect_url)
         
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Authentication failed: {str(e)}")
+
 
 @router.get("/me")
 async def get_me(request: Request):
