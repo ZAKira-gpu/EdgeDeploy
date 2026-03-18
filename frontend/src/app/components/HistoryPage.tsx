@@ -1,59 +1,52 @@
-import { Link } from 'react-router';
-import { Zap, Download, CheckCircle, XCircle, Clock, Search, Filter } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router';
+import { Zap, Download, CheckCircle, XCircle, Clock, Search, Filter, Loader2 } from 'lucide-react';
 
 export default function HistoryPage() {
-  const conversions = [
-    {
-      id: 1,
-      name: 'resnet50_model.pt',
-      inputFormat: 'PyTorch',
-      outputFormat: 'TFLite',
-      status: 'completed',
-      date: '2026-03-18 14:30',
-      size: '24.5 MB → 6.2 MB',
-      duration: '12.3s',
-    },
-    {
-      id: 2,
-      name: 'mobilenet_v2.onnx',
-      inputFormat: 'ONNX',
-      outputFormat: 'TFLite',
-      status: 'completed',
-      date: '2026-03-17 09:15',
-      size: '13.8 MB → 3.4 MB',
-      duration: '8.7s',
-    },
-    {
-      id: 3,
-      name: 'yolov5_detector.pt',
-      inputFormat: 'PyTorch',
-      outputFormat: 'ONNX',
-      status: 'completed',
-      date: '2026-03-16 16:45',
-      size: '46.2 MB → 11.5 MB',
-      duration: '18.4s',
-    },
-    {
-      id: 4,
-      name: 'bert_model.pt',
-      inputFormat: 'PyTorch',
-      outputFormat: 'TFLite',
-      status: 'failed',
-      date: '2026-03-15 11:20',
-      size: '-',
-      duration: '-',
-    },
-    {
-      id: 5,
-      name: 'efficientnet_b0.onnx',
-      inputFormat: 'ONNX',
-      outputFormat: 'TFLite',
-      status: 'completed',
-      date: '2026-03-14 13:50',
-      size: '19.1 MB → 4.8 MB',
-      duration: '10.2s',
-    },
-  ];
+  const navigate = useNavigate();
+  const [conversions, setConversions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({ total: 0, success: 0, failed: 0 });
+
+  useEffect(() => {
+    const apiKey = localStorage.getItem('api_key');
+    if (!apiKey) {
+      navigate('/auth');
+      return;
+    }
+
+    const fetchHistory = async () => {
+      try {
+        const res = await fetch('/tasks', {
+          headers: { 'X-API-Key': apiKey }
+        });
+        if (!res.ok) throw new Error('Failed to fetch history');
+        const data = await res.json();
+        
+        setConversions(data.tasks);
+        setStats({
+          total: data.count,
+          success: data.tasks.filter((t: any) => t.status === 'completed').length,
+          failed: data.tasks.filter((t: any) => t.status === 'failed').length,
+        });
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchHistory();
+  }, [navigate]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#0a0a0a] text-white flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+      </div>
+    );
+  }
+
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white flex">
@@ -159,16 +152,16 @@ export default function HistoryPage() {
                 <tbody>
                   {conversions.map((conversion) => (
                     <tr
-                      key={conversion.id}
+                      key={conversion.task_id}
                       className="border-b border-white/5 hover:bg-white/5 transition-colors"
                     >
                       <td className="px-6 py-4">
-                        <div className="font-medium">{conversion.name}</div>
-                        <div className="text-sm text-gray-400">{conversion.duration}</div>
+                        <div className="font-medium">{conversion.task_id.slice(0, 8)}...</div>
+                        <div className="text-sm text-gray-400">{conversion.precision}</div>
                       </td>
                       <td className="px-6 py-4">
                         <div className="text-sm">
-                          {conversion.inputFormat} → {conversion.outputFormat}
+                          PyTorch → TFLite/ONNX
                         </div>
                       </td>
                       <td className="px-6 py-4">
@@ -177,26 +170,47 @@ export default function HistoryPage() {
                             <CheckCircle className="w-4 h-4" />
                             Completed
                           </span>
-                        ) : (
+                        ) : conversion.status === 'failed' ? (
                           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-500/10 text-red-400 text-sm">
                             <XCircle className="w-4 h-4" />
                             Failed
                           </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-400 text-sm">
+                            <Clock className="w-4 h-4" />
+                            {conversion.status.charAt(0).toUpperCase() + conversion.status.slice(1)}
+                          </span>
                         )}
                       </td>
-                      <td className="px-6 py-4 text-sm">{conversion.size}</td>
+                      <td className="px-6 py-4 text-sm">-</td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2 text-sm text-gray-400">
                           <Clock className="w-4 h-4" />
-                          {conversion.date}
+                          {new Date(conversion.created_at).toLocaleString()}
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        {conversion.status === 'completed' ? (
-                          <button className="bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 px-4 py-2 rounded-lg transition-colors flex items-center gap-2 text-sm">
-                            <Download className="w-4 h-4" />
-                            Download
-                          </button>
+                        {conversion.status === 'completed' && conversion.outputs ? (
+                          <div className="flex gap-2">
+                            {conversion.outputs.tflite && (
+                                <a 
+                                    href={`/download/${conversion.task_id}/tflite`}
+                                    className="bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-2 text-xs"
+                                >
+                                    <Download className="w-3.5 h-3.5" />
+                                    TFLite
+                                </a>
+                            )}
+                             {conversion.outputs.onnx && (
+                                <a 
+                                    href={`/download/${conversion.task_id}/onnx`}
+                                    className="bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-2 text-xs"
+                                >
+                                    <Download className="w-3.5 h-3.5" />
+                                    ONNX
+                                </a>
+                            )}
+                          </div>
                         ) : (
                           <button className="bg-white/5 text-gray-500 px-4 py-2 rounded-lg cursor-not-allowed text-sm">
                             Unavailable
@@ -206,6 +220,7 @@ export default function HistoryPage() {
                     </tr>
                   ))}
                 </tbody>
+
               </table>
             </div>
           </div>
