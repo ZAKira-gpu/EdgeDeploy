@@ -127,26 +127,37 @@ export default function ResultsPage({ data }: ResultsPageProps) {
         <div className="bg-gradient-to-br from-[#1a1a1a] to-[#0f0f0f] border border-white/10 rounded-xl p-6">
           <h3 className="text-lg font-semibold mb-4">Download Options</h3>
           <div className="space-y-3">
-            <button className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-3 rounded-lg hover:opacity-90 transition-opacity flex items-center justify-between">
-              <span className="flex items-center gap-3">
-                <Download className="w-5 h-5" />
-                <div className="text-left">
-                  <div className="font-medium">Download Converted Model</div>
-                  <div className="text-sm opacity-80">model_quantized.tflite (6.2 MB)</div>
-                </div>
-              </span>
-            </button>
-            <button className="w-full bg-white/5 border border-white/10 text-white px-6 py-3 rounded-lg hover:bg-white/10 transition-colors flex items-center justify-between">
-              <span className="flex items-center gap-3">
-                <Download className="w-5 h-5" />
-                <div className="text-left">
-                  <div className="font-medium">Download Original Model</div>
-                  <div className="text-sm text-gray-400">model.pt (24.5 MB)</div>
-                </div>
-              </span>
-            </button>
+            {data?.task_id && (
+                <>
+                <a 
+                    href={`/download/${data.task_id}/tflite`}
+                    className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-3 rounded-lg hover:opacity-90 transition-opacity flex items-center justify-between no-underline"
+                >
+                    <span className="flex items-center gap-3">
+                        <Download className="w-5 h-5" />
+                        <div className="text-left">
+                        <div className="font-medium">Download TFLite Model</div>
+                        <div className="text-sm opacity-80">Optimized for mobile & edge</div>
+                        </div>
+                    </span>
+                </a>
+                <a 
+                    href={`/download/${data.task_id}/onnx`}
+                    className="w-full bg-white/5 border border-white/10 text-white px-6 py-3 rounded-lg hover:bg-white/20 transition-colors flex items-center justify-between no-underline"
+                >
+                    <span className="flex items-center gap-3">
+                        <Download className="w-5 h-5" />
+                        <div className="text-left">
+                        <div className="font-medium">Download ONNX Model</div>
+                        <div className="text-sm text-gray-400">Standard cross-platform format</div>
+                        </div>
+                    </span>
+                </a>
+                </>
+            )}
           </div>
         </div>
+
 
         {/* Actions */}
         <div className="flex items-center gap-4 mt-8">
