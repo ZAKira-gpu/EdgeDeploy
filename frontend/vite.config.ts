@@ -5,11 +5,20 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [
-    // The React and Tailwind plugins are both required for Make, even if
-    // Tailwind is not being actively used – do not remove them
     react(),
     tailwindcss(),
   ],
+  server: {
+    port: 3000,
+    proxy: {
+      '/auth': 'http://localhost:8000',
+      '/upload': 'http://localhost:8000',
+      '/convert': 'http://localhost:8000',
+      '/status': 'http://localhost:8000',
+      '/tasks': 'http://localhost:8000',
+      '/download': 'http://localhost:8000',
+    }
+  },
   resolve: {
     alias: {
       // Alias @ to the src directory
